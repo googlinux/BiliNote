@@ -14,6 +14,7 @@ from app.services.stripe_service import StripeService
 from app.core.dependencies import get_current_active_user
 from app.core.config import settings
 from app.utils.response import ResponseWrapper
+from app.services.email_service import EmailService
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/payment", tags=["Payment"])
@@ -198,6 +199,20 @@ async def handle_checkout_completed(session: dict, db: Session):
 
         db.commit()
 
+        # Send payment success email
+        try:
+            user = UserDAO.get_user_by_id(db, subscription_obj.user_id)
+            if user:
+                amount = session.get("amount_total", 0) / 100  # Convert cents to dollars
+                EmailService.send_payment_success_email(
+                    email=user.email,
+                    plan_name=plan_type.value.capitalize(),
+                    amount=amount,
+                    billing_cycle=billing_cycle.value
+                )
+        except Exception as e:
+            print(f"Failed to send payment success email: {e}")
+
 
 async def handle_subscription_updated(subscription: dict, db: Session):
     """Handle subscription update"""
@@ -233,6 +248,9 @@ async def handle_subscription_deleted(subscription: dict, db: Session):
     ).first()
 
     if subscription_obj:
+        # Store old plan name before downgrade
+        old_plan_name = subscription_obj.plan_type.value.capitalize()
+
         # Downgrade to free plan
         subscription_obj.plan_type = PlanType.FREE
         subscription_obj.billing_cycle = None
@@ -244,7 +262,22 @@ async def handle_subscription_deleted(subscription: dict, db: Session):
         subscription_obj.max_videos_per_month = config["max_videos_per_month"]
         subscription_obj.max_video_duration_minutes = config["max_video_duration_minutes"]
 
+        # Get access end date
+        access_until = subscription_obj.current_period_end
+
         db.commit()
+
+        # Send cancellation email
+        try:
+            user = UserDAO.get_user_by_id(db, subscription_obj.user_id)
+            if user and access_until:
+                EmailService.send_subscription_cancelled_email(
+                    email=user.email,
+                    plan_name=old_plan_name,
+                    access_until=access_until.strftime("%B %d, %Y")
+                )
+        except Exception as e:
+            print(f"Failed to send cancellation email: {e}")
 
 
 async def handle_invoice_paid(invoice: dict, db: Session):
@@ -290,6 +323,17 @@ async def handle_invoice_failed(invoice: dict, db: Session):
         # Mark subscription as past due
         subscription.status = SubscriptionStatus.PAST_DUE
         db.commit()
+
+        # Send payment failed email
+        try:
+            user = UserDAO.get_user_by_id(db, subscription.user_id)
+            if user:
+                EmailService.send_payment_failed_email(
+                    email=user.email,
+                    plan_name=subscription.plan_type.value.capitalize()
+                )
+        except Exception as e:
+            print(f"Failed to send payment failed email: {e}")
 
 
 @router.get("/customer-portal", response_model=ResponseWrapper[PortalResponse])

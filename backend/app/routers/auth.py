@@ -19,6 +19,7 @@ from app.core.security import (
 )
 from app.core.dependencies import get_current_user, get_current_active_user
 from app.utils.response import ResponseWrapper
+from app.services.email_service import EmailService
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -64,13 +65,20 @@ async def register(
         username=user_data.username,
     )
 
+    # Send welcome email
+    try:
+        EmailService.send_welcome_email(user.email, user.full_name)
+    except Exception as e:
+        print(f"Failed to send welcome email: {e}")
+        # Don't fail registration if email fails
+
     # In production, send verification email here
     # verification_token = create_email_verification_token(user.email)
     # await send_verification_email(user.email, verification_token)
 
     return ResponseWrapper.success(
         data=UserResponse.model_validate(user),
-        msg="Registration successful. Please check your email for verification link."
+        msg="Registration successful. Welcome to BiliNote!"
     )
 
 
