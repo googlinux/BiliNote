@@ -31,8 +31,24 @@ export default function RegisterPage() {
       return
     }
 
-    if (password.length < 8) {
-      setLocalError("Password must be at least 8 characters")
+    // Improved password validation (matches backend requirements)
+    if (password.length < 10) {
+      setLocalError("Password must be at least 10 characters")
+      return
+    }
+
+    if (!/[A-Z]/.test(password)) {
+      setLocalError("Password must contain at least one uppercase letter")
+      return
+    }
+
+    if (!/[a-z]/.test(password)) {
+      setLocalError("Password must contain at least one lowercase letter")
+      return
+    }
+
+    if (!/[0-9]/.test(password)) {
+      setLocalError("Password must contain at least one digit")
       return
     }
 

@@ -41,19 +41,16 @@ class UserStats(BaseModel):
 
 
 def is_admin(current_user: User = Depends(get_current_active_user)):
-    """Check if user is admin"""
-    # For now, check if email is admin email
-    # In production, add an is_admin field to User model
-    admin_emails = [
-        "admin@bilinote.app",
-        "admin@localhost",
-        "test@test.com",  # For testing
-    ]
+    """
+    Check if user is admin (superuser)
 
-    if current_user.email not in admin_emails:
+    Uses the is_superuser field from User model for role-based access control.
+    This is more secure than email-based whitelisting.
+    """
+    if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
+            detail="Admin access required. Please contact system administrator."
         )
 
     return current_user

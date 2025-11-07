@@ -15,13 +15,36 @@ class UserRegister(BaseModel):
 
     @validator('password')
     def password_strength(cls, v):
-        """Validate password strength"""
-        if len(v) < 8:
-            raise ValueError('Password must be at least 8 characters long')
+        """
+        Validate password strength
+
+        Requirements:
+        - At least 10 characters (increased from 8 for better security)
+        - At least one uppercase letter
+        - At least one lowercase letter
+        - At least one digit
+        - No common weak passwords
+        """
+        if len(v) < 10:
+            raise ValueError('Password must be at least 10 characters long')
+
+        if not any(char.isupper() for char in v):
+            raise ValueError('Password must contain at least one uppercase letter')
+
+        if not any(char.islower() for char in v):
+            raise ValueError('Password must contain at least one lowercase letter')
+
         if not any(char.isdigit() for char in v):
             raise ValueError('Password must contain at least one digit')
-        if not any(char.isalpha() for char in v):
-            raise ValueError('Password must contain at least one letter')
+
+        # Check for common weak passwords
+        common_passwords = [
+            'password', '123456789', 'qwerty123', 'abc123456',
+            '1234567890', 'password123', 'admin123', 'welcome123'
+        ]
+        if v.lower() in common_passwords:
+            raise ValueError('Password is too common. Please choose a stronger password')
+
         return v
 
 
@@ -74,13 +97,36 @@ class PasswordChange(BaseModel):
 
     @validator('new_password')
     def password_strength(cls, v):
-        """Validate password strength"""
-        if len(v) < 8:
-            raise ValueError('Password must be at least 8 characters long')
+        """
+        Validate password strength
+
+        Requirements:
+        - At least 10 characters
+        - At least one uppercase letter
+        - At least one lowercase letter
+        - At least one digit
+        - No common weak passwords
+        """
+        if len(v) < 10:
+            raise ValueError('Password must be at least 10 characters long')
+
+        if not any(char.isupper() for char in v):
+            raise ValueError('Password must contain at least one uppercase letter')
+
+        if not any(char.islower() for char in v):
+            raise ValueError('Password must contain at least one lowercase letter')
+
         if not any(char.isdigit() for char in v):
             raise ValueError('Password must contain at least one digit')
-        if not any(char.isalpha() for char in v):
-            raise ValueError('Password must contain at least one letter')
+
+        # Check for common weak passwords
+        common_passwords = [
+            'password', '123456789', 'qwerty123', 'abc123456',
+            '1234567890', 'password123', 'admin123', 'welcome123'
+        ]
+        if v.lower() in common_passwords:
+            raise ValueError('Password is too common. Please choose a stronger password')
+
         return v
 
 
