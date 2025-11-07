@@ -1,7 +1,55 @@
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { useAuthStore } from "@/store/auth-store"
+import { AlertCircle, CheckCircle } from "lucide-react"
 
 export default function RegisterPage() {
+  const router = useRouter()
+  const { register, isLoading, error, clearError } = useAuthStore()
+
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [fullName, setFullName] = useState("")
+  const [agreed, setAgreed] = useState(false)
+  const [localError, setLocalError] = useState("")
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    clearError()
+    setLocalError("")
+
+    // Validate
+    if (password !== confirmPassword) {
+      setLocalError("Passwords do not match")
+      return
+    }
+
+    if (password.length < 8) {
+      setLocalError("Password must be at least 8 characters")
+      return
+    }
+
+    if (!agreed) {
+      setLocalError("Please agree to the Terms of Service")
+      return
+    }
+
+    try {
+      await register({ email, password, full_name: fullName })
+      // Redirect to dashboard on success
+      router.push("/dashboard")
+    } catch (err) {
+      console.error("Registration failed:", err)
+    }
+  }
+
+  const displayError = error || localError
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/50 py-12">
       <div className="w-full max-w-md rounded-lg border bg-card p-8 shadow-lg">
@@ -18,16 +66,26 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        <form className="space-y-4">
+        {displayError && (
+          <div className="mb-4 flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+            <AlertCircle className="h-4 w-4" />
+            <span>{displayError}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="name" className="block text-sm font-medium mb-2">
+            <label htmlFor="fullName" className="block text-sm font-medium mb-2">
               Full Name
             </label>
             <input
-              id="name"
+              id="fullName"
               type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
               className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="John Doe"
+              disabled={isLoading}
             />
           </div>
 
@@ -38,8 +96,12 @@ export default function RegisterPage() {
             <input
               id="email"
               type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="you@example.com"
+              required
+              disabled={isLoading}
             />
           </div>
 
@@ -50,8 +112,12 @@ export default function RegisterPage() {
             <input
               id="password"
               type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="At least 8 characters"
+              required
+              disabled={isLoading}
             />
           </div>
 
@@ -62,13 +128,24 @@ export default function RegisterPage() {
             <input
               id="confirm-password"
               type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="••••••••"
+              required
+              disabled={isLoading}
             />
           </div>
 
           <div className="flex items-start">
-            <input type="checkbox" className="mt-1 mr-2" id="terms" />
+            <input
+              type="checkbox"
+              className="mt-1 mr-2"
+              id="terms"
+              checked={agreed}
+              onChange={(e) => setAgreed(e.target.checked)}
+              disabled={isLoading}
+            />
             <label htmlFor="terms" className="text-sm text-muted-foreground">
               I agree to the{" "}
               <Link href="/terms" className="text-primary hover:underline">
@@ -81,8 +158,8 @@ export default function RegisterPage() {
             </label>
           </div>
 
-          <Button className="w-full" type="submit">
-            Create Account
+          <Button className="w-full" type="submit" disabled={isLoading}>
+            {isLoading ? "Creating account..." : "Create Account"}
           </Button>
         </form>
 
@@ -104,13 +181,18 @@ export default function RegisterPage() {
           </div>
 
           <div className="mt-6 grid grid-cols-2 gap-4">
-            <Button variant="outline" type="button">
+            <Button variant="outline" type="button" disabled>
               Google
             </Button>
-            <Button variant="outline" type="button">
+            <Button variant="outline" type="button" disabled>
               GitHub
             </Button>
           </div>
+        </div>
+
+        <div className="mt-6 flex items-center gap-2 rounded-md bg-primary/10 p-3 text-sm">
+          <CheckCircle className="h-4 w-4 text-primary" />
+          <span>Free tier includes 5 videos per month</span>
         </div>
       </div>
     </div>

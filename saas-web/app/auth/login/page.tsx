@@ -1,7 +1,33 @@
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { useAuthStore } from "@/store/auth-store"
+import { AlertCircle } from "lucide-react"
 
 export default function LoginPage() {
+  const router = useRouter()
+  const { login, isLoading, error, clearError } = useAuthStore()
+
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    clearError()
+
+    try {
+      await login({ email, password })
+      // Redirect to dashboard on success
+      router.push("/dashboard")
+    } catch (err) {
+      // Error is handled by the store
+      console.error("Login failed:", err)
+    }
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/50">
       <div className="w-full max-w-md rounded-lg border bg-card p-8 shadow-lg">
@@ -18,7 +44,14 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <form className="space-y-4">
+        {error && (
+          <div className="mb-4 flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+            <AlertCircle className="h-4 w-4" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="email" className="block text-sm font-medium mb-2">
               Email
@@ -26,8 +59,12 @@ export default function LoginPage() {
             <input
               id="email"
               type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="you@example.com"
+              required
+              disabled={isLoading}
             />
           </div>
 
@@ -38,8 +75,12 @@ export default function LoginPage() {
             <input
               id="password"
               type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="••••••••"
+              required
+              disabled={isLoading}
             />
           </div>
 
@@ -53,8 +94,8 @@ export default function LoginPage() {
             </Link>
           </div>
 
-          <Button className="w-full" type="submit">
-            Sign In
+          <Button className="w-full" type="submit" disabled={isLoading}>
+            {isLoading ? "Signing in..." : "Sign In"}
           </Button>
         </form>
 
@@ -76,10 +117,10 @@ export default function LoginPage() {
           </div>
 
           <div className="mt-6 grid grid-cols-2 gap-4">
-            <Button variant="outline" type="button">
+            <Button variant="outline" type="button" disabled>
               Google
             </Button>
-            <Button variant="outline" type="button">
+            <Button variant="outline" type="button" disabled>
               GitHub
             </Button>
           </div>
