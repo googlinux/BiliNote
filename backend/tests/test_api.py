@@ -12,7 +12,7 @@ from datetime import datetime
 # Configuration
 BASE_URL = "http://localhost:8483"
 TEST_EMAIL = f"test_{int(time.time())}@example.com"
-TEST_PASSWORD = "Test1234!"
+TEST_PASSWORD = "Test123456!"  # Updated to meet new password requirements (10+ chars, uppercase, lowercase, digits)
 TEST_NAME = "Test User"
 
 # Global variables to store tokens
