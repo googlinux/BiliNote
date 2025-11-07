@@ -6,10 +6,15 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks, UploadFile, File
+from fastapi import APIRouter, HTTPException, BackgroundTasks, UploadFile, File, Depends
+from sqlalchemy.orm import Session
 from pydantic import BaseModel, validator, field_validator
 from dataclasses import asdict
 
+from app.db.engine import get_db
+from app.db.models.user import User
+from app.db.subscription_dao import SubscriptionDAO
+from app.core.dependencies import get_current_active_user
 from app.db.video_task_dao import get_task_by_video
 from app.enmus.exception import NoteErrorEnum
 from app.enmus.note_enums import DownloadQuality
@@ -76,7 +81,7 @@ def save_note_to_file(task_id: str, note):
 def run_note_task(task_id: str, video_url: str, platform: str, quality: DownloadQuality,
                   link: bool = False, screenshot: bool = False, model_name: str = None, provider_id: str = None,
                   _format: list = None, style: str = None, extras: str = None, video_understanding: bool = False,
-                  video_interval=0, grid_size=[]
+                  video_interval=0, grid_size=[], user_id: int = None, video_duration_minutes: int = 0
                   ):
 
     if not model_name or not provider_id:
@@ -104,10 +109,31 @@ def run_note_task(task_id: str, video_url: str, platform: str, quality: Download
         return
     save_note_to_file(task_id, note)
 
+    # Record usage after successful generation
+    if user_id:
+        try:
+            from app.db.engine import SessionLocal
+            db = SessionLocal()
+            try:
+                SubscriptionDAO.record_usage(
+                    db=db,
+                    user_id=user_id,
+                    video_duration_minutes=video_duration_minutes
+                )
+                db.commit()
+                logger.info(f"Usage recorded for user {user_id}")
+            finally:
+                db.close()
+        except Exception as e:
+            logger.error(f"Failed to record usage: {e}")
+
 
 
 @router.post('/delete_task')
-def delete_task(data: RecordRequest):
+def delete_task(
+    data: RecordRequest,
+    current_user: User = Depends(get_current_active_user)
+):
     try:
         # TODO: 待持久化完成
         # NoteGenerator().delete_note(video_id=data.video_id, platform=data.platform)
@@ -117,7 +143,10 @@ def delete_task(data: RecordRequest):
 
 
 @router.post("/upload")
-async def upload(file: UploadFile = File(...)):
+async def upload(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_user)
+):
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     file_location = os.path.join(UPLOAD_DIR, file.filename)
 
@@ -129,8 +158,23 @@ async def upload(file: UploadFile = File(...)):
 
 
 @router.post("/generate_note")
-def generate_note(data: VideoRequest, background_tasks: BackgroundTasks):
+def generate_note(
+    data: VideoRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     try:
+        # Check quota before processing
+        video_duration_minutes = 10  # TODO: Get actual video duration
+        can_process, error_msg = SubscriptionDAO.check_quota(
+            db=db,
+            user_id=current_user.id,
+            video_duration_minutes=video_duration_minutes
+        )
+
+        if not can_process:
+            raise HTTPException(status_code=403, detail=error_msg)
 
         video_id = extract_video_id(data.video_url, data.platform)
         # if not video_id:
@@ -151,16 +195,23 @@ def generate_note(data: VideoRequest, background_tasks: BackgroundTasks):
             # 正常新建任务
             task_id = str(uuid.uuid4())
 
-        background_tasks.add_task(run_note_task, task_id, data.video_url, data.platform, data.quality, data.link,
-                                  data.screenshot, data.model_name, data.provider_id, data.format, data.style,
-                                  data.extras, data.video_understanding, data.video_interval, data.grid_size)
+        background_tasks.add_task(
+            run_note_task,
+            task_id, data.video_url, data.platform, data.quality, data.link,
+            data.screenshot, data.model_name, data.provider_id, data.format, data.style,
+            data.extras, data.video_understanding, data.video_interval, data.grid_size,
+            current_user.id, video_duration_minutes
+        )
         return R.success({"task_id": task_id})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/task_status/{task_id}")
-def get_task_status(task_id: str):
+def get_task_status(
+    task_id: str,
+    current_user: User = Depends(get_current_active_user)
+):
     status_path = os.path.join(NOTE_OUTPUT_DIR, f"{task_id}.status.json")
     result_path = os.path.join(NOTE_OUTPUT_DIR, f"{task_id}.json")
 

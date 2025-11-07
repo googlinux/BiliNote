@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routers import note, provider, model, config, auth, subscription
+from .routers import note, provider, model, config, auth, subscription, payment
 from .core.config import settings
 
 
@@ -25,6 +25,7 @@ def create_app(lifespan) -> FastAPI:
     # Authentication & Subscription (new SaaS features)
     app.include_router(auth.router)  # /api/auth/*
     app.include_router(subscription.router)  # /api/subscription/*
+    app.include_router(payment.router)  # /api/payment/*
 
     # Legacy routers (existing functionality)
     app.include_router(note.router, prefix="/api")

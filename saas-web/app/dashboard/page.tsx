@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useAuthStore } from "@/store/auth-store"
 import { useSubscriptionStore } from "@/store/subscription-store"
 import { Button } from "@/components/ui/button"
-import { LogOut, Settings, FileText, BarChart3 } from "lucide-react"
+import { LogOut, Settings, FileText, BarChart3, CreditCard } from "lucide-react"
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -131,12 +131,24 @@ export default function DashboardPage() {
         {/* Quick Actions */}
         <div className="rounded-lg border bg-card p-6">
           <h2 className="mb-4 text-xl font-bold">Quick Actions</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Button className="h-auto flex-col items-start p-6 text-left" variant="outline">
               <FileText className="mb-2 h-6 w-6" />
               <div className="font-semibold">Generate Note</div>
               <div className="text-xs text-muted-foreground">
                 Create a new note from video URL
+              </div>
+            </Button>
+
+            <Button
+              className="h-auto flex-col items-start p-6 text-left"
+              variant="outline"
+              onClick={() => router.push("/dashboard/settings/billing")}
+            >
+              <CreditCard className="mb-2 h-6 w-6" />
+              <div className="font-semibold">Billing</div>
+              <div className="text-xs text-muted-foreground">
+                Manage subscription and payment
               </div>
             </Button>
 
@@ -161,7 +173,7 @@ export default function DashboardPage() {
             <p className="mb-4 text-sm text-muted-foreground">
               Get 500 videos per month, longer durations, and advanced AI models
             </p>
-            <Button onClick={() => router.push("/#pricing")}>
+            <Button onClick={() => router.push("/dashboard/settings/billing")}>
               View Plans
             </Button>
           </div>
