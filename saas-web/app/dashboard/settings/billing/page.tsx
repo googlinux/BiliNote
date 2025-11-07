@@ -10,10 +10,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Loader2, CreditCard, Calendar, CheckCircle, XCircle, AlertCircle } from "lucide-react"
 import type { PlanType, BillingCycle } from "@/types/auth"
+import { useToast } from "@/hooks/use-toast"
 
 export default function BillingPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { toast } = useToast()
   const { isAuthenticated, isLoading: authLoading } = useAuthStore()
   const { subscription, plans, fetchSubscription, fetchPlans, isLoading } = useSubscriptionStore()
   const [processingPortal, setProcessingPortal] = useState(false)
@@ -25,10 +27,20 @@ export default function BillingPage() {
     const cancelled = searchParams.get('cancelled')
 
     if (success === 'true') {
+      toast({
+        title: "Payment Successful!",
+        description: "Your subscription has been activated.",
+        variant: "success",
+      })
       // Refresh subscription data after successful payment
       fetchSubscription()
+    } else if (cancelled === 'true') {
+      toast({
+        title: "Payment Cancelled",
+        description: "You cancelled the checkout process.",
+      })
     }
-  }, [searchParams, fetchSubscription])
+  }, [searchParams, fetchSubscription, toast])
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -50,7 +62,11 @@ export default function BillingPage() {
       window.location.href = url
     } catch (error: any) {
       console.error("Failed to open customer portal:", error)
-      alert(error.response?.data?.detail || "Failed to open customer portal")
+      toast({
+        title: "Error",
+        description: error.response?.data?.detail || "Failed to open customer portal",
+        variant: "destructive",
+      })
     } finally {
       setProcessingPortal(false)
     }
@@ -64,7 +80,11 @@ export default function BillingPage() {
       window.location.href = url
     } catch (error: any) {
       console.error("Failed to create checkout session:", error)
-      alert(error.response?.data?.detail || "Failed to start checkout")
+      toast({
+        title: "Error",
+        description: error.response?.data?.detail || "Failed to start checkout",
+        variant: "destructive",
+      })
       setProcessingCheckout(null)
     }
   }

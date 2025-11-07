@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { useAuthStore } from "@/store/auth-store"
 import { AlertCircle, CheckCircle } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 export default function RegisterPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const { register, isLoading, error, clearError } = useAuthStore()
 
   const [email, setEmail] = useState("")
@@ -41,6 +43,11 @@ export default function RegisterPage() {
 
     try {
       await register({ email, password, full_name: fullName })
+      toast({
+        title: "Account created!",
+        description: "Welcome to BiliNote. Your account has been successfully created.",
+        variant: "success",
+      })
       // Redirect to dashboard on success
       router.push("/dashboard")
     } catch (err) {

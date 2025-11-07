@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { useAuthStore } from "@/store/auth-store"
 import { AlertCircle } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 export default function LoginPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const { login, isLoading, error, clearError } = useAuthStore()
 
   const [email, setEmail] = useState("")
@@ -20,6 +22,11 @@ export default function LoginPage() {
 
     try {
       await login({ email, password })
+      toast({
+        title: "Welcome back!",
+        description: "You have successfully signed in.",
+        variant: "success",
+      })
       // Redirect to dashboard on success
       router.push("/dashboard")
     } catch (err) {
